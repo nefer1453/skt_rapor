@@ -103,9 +103,11 @@
             document.getElementById('kamera-kapsayici').style.display = 'block';
             Quagga.init({
                 inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#kamera-kapsayici'), constraints: { facingMode: "environment" } },
-                decoder: { readers: ["ean_reader", "ean_8_reader", "upc_reader"] }
+                decoder: { readers: ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"] },
+                locator: { patchSize: "medium", halfSample: true }
             }, (err) => { if (!err) Quagga.start(); });
             Quagga.onDetected((data) => {
+                // KARARLILIK KONTROLÜ: Yanlış okumayı engellemek için Quagga'yı hemen durdur
                 Quagga.stop();
                 document.getElementById('kamera-kapsayici').style.display = 'none';
                 islemeBaslat(data.codeResult.code);
@@ -151,9 +153,9 @@
             document.getElementById('secim-baslik').innerText = tur + " NEDENİ SEÇİN";
             let html = '';
             let liste = [];
-            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabancı Madde', 'Ambalaj Bozuk', 'Ürün Bozuk'];
-            if(tur === 'RAF') liste = ['Düştü Kırıldı', 'Deforme Oldu'];
-            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku/Tat vb.'];
+            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabanci Madde', 'Ambalaj Bozuk', 'Urun Bozuk'];
+            if(tur === 'RAF') liste = ['Dustu Kirildi', 'Deforme Oldu'];
+            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku-Tat vb.'];
             
             liste.forEach(n => {
                 html += `<button class="btn-ana bg-turuncu" style="font-size:16px;" onclick="nedenSec('${n}')">${n}</button>`;
@@ -164,10 +166,10 @@
         function nedenSec(neden) {
             aktifUrun.neden = neden;
             if(neden === 'SKT') {
-                izgaraOlustur('GÜN SEÇİN', 1, 31, 'gun');
+                izgaraOlustur('GUN SECIN', 1, 31, 'gun');
             } else {
                 aktifUrun.gun = "--"; aktifUrun.ay = "--"; aktifUrun.yil = "----";
-                izgaraOlustur('ADET SEÇİN', 1, 30, 'adet');
+                izgaraOlustur('ADET SECIN', 1, 30, 'adet');
             }
         }
 
@@ -183,9 +185,9 @@
         }
 
         function degerSec(asama, d) {
-            if(asama === 'gun') { aktifUrun.gun = d; izgaraOlustur('AY SEÇİN', 1, 12, 'ay'); }
-            else if(asama === 'ay') { aktifUrun.ay = d; izgaraOlustur('YIL SEÇİN', 2025, 2030, 'yil'); }
-            else if(asama === 'yil') { aktifUrun.yil = d; izgaraOlustur('ADET SEÇİN', 1, 30, 'adet'); }
+            if(asama === 'gun') { aktifUrun.gun = d; izgaraOlustur('AY SECIN', 1, 12, 'ay'); }
+            else if(asama === 'ay') { aktifUrun.ay = d; izgaraOlustur('YIL SECIN', 2025, 2030, 'yil'); }
+            else if(asama === 'yil') { aktifUrun.yil = d; izgaraOlustur('ADET SECIN', 1, 30, 'adet'); }
             else if(asama === 'adet') { 
                 aktifUrun.adet = d; 
                 urunler.push({...aktifUrun}); 
@@ -233,51 +235,73 @@
             r.readAsDataURL(e.target.files[0]);
         }
 
+        // --- TÜRKÇE KARAKTER YAMASI (JSPDF İÇİN) ---
         function tr(text) {
-            return text.replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+            if(!text) return "";
+            return text.replace(/Ğ/g, 'G').replace(/ğ/g, 'g')
+                       .replace(/Ü/g, 'U').replace(/ü/g, 'u')
+                       .replace(/Ş/g, 'S').replace(/ş/g, 's')
+                       .replace(/İ/g, 'I').replace(/ı/g, 'i')
+                       .replace(/Ö/g, 'O').replace(/ö/g, 'o')
+                       .replace(/Ç/g, 'C').replace(/ç/g, 'c');
         }
 
         function renkliPdfOlustur(foto) {
             const doc = new jsPDF();
             const bugun = new Date().toLocaleDateString('tr-TR');
+            
+            // --- BAŞLIK ALANI ---
             doc.setTextColor(9, 93, 64);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
-            doc.text(tr("ZAYİ VE ANALİZ RAPORU"), 105, 20, null, null, 'center');
+            doc.text(tr("ZAYI VE SKT ANALIZ RAPORU"), 105, 20, null, null, 'center');
+            
             doc.setFontSize(11);
             doc.setTextColor(0, 0, 0);
-            doc.text(tr("Mağaza: Soğanlık 2 | Tarih: ") + bugun, 105, 28, null, null, 'center');
+            doc.setFont("helvetica", "normal");
+            doc.text(tr("Magaza: Soganlik 2 | Tarih: ") + bugun, 105, 28, null, null, 'center');
             doc.line(10, 32, 200, 32);
+
+            // --- TABLO BAŞLIĞI ---
             doc.setFillColor(9, 93, 64);
             doc.rect(10, 35, 95, 8, 'F');
             doc.setFillColor(245, 124, 0); 
             doc.rect(105, 35, 95, 8, 'F');
+
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(10);
-            doc.text(tr("Ürün Bilgisi"), 15, 40);
+            doc.text(tr("Urun Bilgisi"), 15, 40);
             doc.text(tr("Neden / Tarih / Adet"), 110, 40);
+
+            // --- ÜRÜN LİSTESİ ---
             let y = 50;
             doc.setTextColor(0, 0, 0);
             urunler.forEach((u, i) => {
                 doc.setFontSize(10);
                 doc.text(tr(u.isim), 15, y);
                 doc.setFontSize(8);
-                doc.text(`Barkod: ${u.barkod}`, 15, y + 5);
+                doc.text(`Barkod: ${u.barkod}`, 15, y + 4);
+                
                 doc.setFontSize(10);
                 doc.setTextColor(245, 124, 0); 
                 doc.text(`${tr(u.neden)} | ${u.gun}.${u.ay}.${u.yil} | Adet: ${u.adet}`, 110, y);
+                
                 doc.setTextColor(0, 0, 0);
                 doc.line(10, y + 8, 200, y + 8);
                 y += 15;
                 if (y > 275) { doc.addPage(); y = 20; }
             });
+
+            // --- FOTOĞRAF SAYFASI ---
             doc.addPage();
             doc.setFillColor(9, 93, 64);
             doc.rect(0, 0, 210, 15, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.text(tr("KANIT FOTOĞRAFI - SOĞANLIK 2"), 105, 10, null, null, 'center');
+            doc.setFontSize(14);
+            doc.text(tr("KANIT FOTOGRAFI - SOGANLIK 2"), 105, 10, null, null, 'center');
             doc.addImage(foto, 'JPEG', 15, 25, 180, 135);
-            doc.save(`Soganlik2_Zayi_Raporu_${bugun}.pdf`);
+
+            doc.save(`Soganlik2_Rapor_${bugun}.pdf`);
             location.reload();
         }
     </script>

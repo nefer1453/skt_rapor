@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soğanlık 2 - Jet Analiz</title>
+    <title>Soğanlık 2 - Akıllı Arşiv</title>
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #f8f9fa; padding: 10px; margin: 0; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f8f9fa; padding: 10px; margin: 0; color: #333; }
         h1 { color: #095D40; margin-bottom: 5px; } 
         .bg-yakut { background-color: #095D40 !important; color: white !important; }
         .bg-turuncu { background-color: #F57C00 !important; color: white !important; }
         .bg-kirmizi { background-color: #D32F2F !important; color: white !important; }
         .bg-gri { background-color: #6c757d !important; color: white !important; }
-        .btn-ana { width: 100%; max-width: 400px; padding: 15px; font-size: 20px; border: none; border-radius: 10px; margin: 10px 0; cursor: pointer; font-weight: bold; }
+        .btn-ana { width: 100%; max-width: 400px; padding: 15px; font-size: 20px; border: none; border-radius: 10px; margin: 10px 0; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 10px; max-width: 400px; margin: 15px auto; }
         .grid-btn { background: #e0e0e0; color: #333; padding: 15px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
         .ekran { display: none; }
@@ -21,7 +21,9 @@
         #kamera-kapsayici { width: 100%; max-width: 400px; height: 300px; background: #000; margin: 0 auto; border-radius: 10px; overflow: hidden; display: none; border: 3px solid #095D40; }
         #kamera-kapsayici video { width: 100%; height: 100%; object-fit: cover; }
         .sepet-kutu { background: white; border-left: 5px solid #095D40; padding: 10px; margin: 10px auto; max-width: 400px; text-align: left; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
-        input[type="text"] { width: 90%; max-width: 380px; padding: 15px; font-size: 18px; border: 2px solid #095D40; border-radius: 8px; margin-bottom: 15px; }
+        .liste-item { background: white; margin: 8px auto; padding: 15px; max-width: 400px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #095D40; box-shadow: 0 3px 5px rgba(0,0,0,0.1); cursor: pointer; }
+        input[type="text"] { width: 90%; max-width: 380px; padding: 15px; font-size: 18px; border: 2px solid #095D40; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+        #arama-kutusu { border: 2px solid #F57C00; margin-top: 10px; background: #fff8f0; }
     </style>
 </head>
 <body>
@@ -32,10 +34,17 @@
     <div id="ekran-baslangic" class="ekran">
         <button class="btn-ana bg-yakut" onclick="kameraAc()">📷 Kamera ile Okut</button>
         <button class="btn-ana bg-turuncu" onclick="barkodElleGir()">⌨️ Barkod Elle Gir</button>
-        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()">📚 Ürün Kütüphanesi</button>
+        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()">📚 Ürün Arşivi</button>
         <div id="sepet-listesi"></div>
         <input type="file" accept="image/*" capture="environment" id="foto-input" style="display:none;" onchange="fotoCekildi(event)">
         <button id="btn-rapor" class="btn-ana bg-kirmizi" style="display:none;" onclick="document.getElementById('foto-input').click()">📑 Raporu Hazırla (Fotoğraflı)</button>
+    </div>
+
+    <div id="ekran-kutuphane" class="ekran">
+        <h2 style="color:#095D40;">Ürün Arşivi</h2>
+        <input type="text" id="arama-kutusu" placeholder="İsim (ilk 3 harf) veya Barkod (son 4 hane)..." oninput="arşivFiltrele()">
+        <div id="kutuphane-liste-alanı" style="max-height: 60vh; overflow-y: auto; padding: 5px;"></div>
+        <button class="btn-ana bg-gri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
     </div>
 
     <div id="ekran-barkod-elle" class="ekran">
@@ -45,14 +54,8 @@
         <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
     </div>
 
-    <div id="ekran-kutuphane" class="ekran">
-        <h2 style="color:#095D40;">Ürün Arşivi</h2>
-        <div id="kutuphane-liste-alanı"></div>
-        <button class="btn-ana bg-gri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
-    </div>
-
     <div id="ekran-kamera" class="ekran">
-        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkodu Merkeze Getirin</h3>
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkodu Tarayın</h3>
         <div id="kamera-kapsayici"></div>
         <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
     </div>
@@ -102,16 +105,11 @@
             ekranGoster('ekran-kamera');
             document.getElementById('kamera-kapsayici').style.display = 'block';
             Quagga.init({
-                inputStream: { 
-                    name: "Live", type: "LiveStream", target: document.querySelector('#kamera-kapsayici'), 
-                    constraints: { facingMode: "environment", focusMode: "continuous" } 
-                },
-                locator: { patchSize: "large", halfSample: false },
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#kamera-kapsayici'), constraints: { facingMode: "environment" } },
                 decoder: { readers: ["ean_reader"] }
             }, (err) => { if (!err) Quagga.start(); });
-            
             Quagga.onDetected((data) => {
-                if(!data.codeResult.code || data.codeResult.code.length < 8) return;
+                if(data.codeResult.code.length < 8) return;
                 Quagga.stop();
                 document.getElementById('kamera-kapsayici').style.display = 'none';
                 islemeBaslat(data.codeResult.code);
@@ -149,21 +147,6 @@
             urunHafizasi[aktifUrun.barkod] = isim;
             localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi));
             ekranGoster('ekran-neden-ana');
-        }
-
-        function altNedenGoster(tur) {
-            ekranGoster('ekran-secim');
-            document.getElementById('secim-baslik').innerText = tur + " NEDENİ";
-            let html = '';
-            let liste = [];
-            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabancı Madde', 'Ambalaj Bozuk', 'Ürün Bozuk'];
-            if(tur === 'RAF') liste = ['Düştü Kırıldı', 'Deforme Oldu'];
-            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku/Tat vb.'];
-            
-            liste.forEach(n => {
-                html += `<button class="btn-ana bg-turuncu" style="font-size:16px;" onclick="nedenSec('${n}')">${n}</button>`;
-            });
-            document.getElementById('dinamik-izgara').innerHTML = html;
         }
 
         function nedenSec(neden) {
@@ -215,78 +198,75 @@
             ekranGoster('ekran-neden-ana');
         }
 
+        // AKILLI ARŞİV FONKSİYONLARI
         function kutuphaneGoster() {
             ekranGoster('ekran-kutuphane');
+            document.getElementById('arama-kutusu').value = '';
+            arşivListele(urunHafizasi);
+        }
+
+        function arşivListele(veriler) {
             let h = '';
-            Object.keys(urunHafizasi).forEach(b => {
-                h += `<div class="liste-item" onclick="isimDuzenle('${b}')"><div><b>${urunHafizasi[b]}</b><br><small>${b}</small></div><button onclick="event.stopPropagation(); urunSil('${b}')" style="color:red; background:none; border:none; font-size:20px;">✕</button></div>`;
+            let barkodlar = Object.keys(veriler).reverse(); // En yeni eklenenler üstte
+            barkodlar.forEach(b => {
+                h += `
+                <div class="liste-item" onclick="isimDuzenle('${b}')">
+                    <div style="text-align:left;">
+                        <b style="color:#095D40; font-size:16px;">${veriler[b]}</b><br>
+                        <small style="color:#777; letter-spacing:1px;">Barkod: ${b}</small>
+                    </div>
+                    <button onclick="event.stopPropagation(); urunSil('${b}')" style="color:#D32F2F; background:none; border:none; font-size:24px; font-weight:bold;">✕</button>
+                </div>`;
             });
-            document.getElementById('kutuphane-liste-alanı').innerHTML = h || '<p>Kayıtlı ürün yok.</p>';
+            document.getElementById('kutuphane-liste-alanı').innerHTML = h || '<p style="margin-top:20px;">Kayıtlı ürün bulunamadı.</p>';
+        }
+
+        function arşivFiltrele() {
+            let ara = document.getElementById('arama-kutusu').value.toLowerCase().trim();
+            let sonuc = {};
+            
+            Object.keys(urunHafizasi).forEach(b => {
+                let isim = urunHafizasi[b].toLowerCase();
+                // Koşul 1: İsmin ilk 3 harfi eşleşiyor mu?
+                let isimEşleşti = isim.startsWith(ara.substring(0, 3)) && ara.length >= 1;
+                // Koşul 2: Barkodun son 4 hanesi eşleşiyor mu?
+                let barkodEşleşti = b.endsWith(ara) && ara.length >= 1;
+                // Genel arama (her ihtimale karşı)
+                if (isim.includes(ara) || b.includes(ara) || isimEşleşti || barkodEşleşti) {
+                    sonuc[b] = urunHafizasi[b];
+                }
+            });
+            arşivListele( ara === "" ? urunHafizasi : sonuc);
         }
 
         function isimDuzenle(b) {
-            let n = prompt("Yeni isim:", urunHafizasi[b]);
-            if(n) { urunHafizasi[b] = n; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); kutuphaneGoster(); }
+            let n = prompt("Ürün ismini güncelleyin:", urunHafizasi[b]);
+            if(n && n.trim() !== "") { 
+                urunHafizasi[b] = n.trim(); 
+                localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); 
+                arşivFiltrele(); 
+            }
         }
 
-        function urunSil(b) { if(confirm("Silinsin mi?")) { delete urunHafizasi[b]; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); kutuphaneGoster(); } }
+        function urunSil(b) { if(confirm("Bu ürünü arşivden silmek istediğine emin misin?")) { delete urunHafizasi[b]; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); arşivFiltrele(); } }
 
-        function fotoCekildi(e) {
-            const r = new FileReader();
-            r.onload = (f) => renkliPdfOlustur(f.target.result);
-            r.readAsDataURL(e.target.files[0]);
-        }
-
-        function fixTR(t) {
-            if(!t) return "";
-            return t.replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/ü/g,'u').replace(/Ü/g,'U').replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ç/g,'c').replace(/Ç/g,'C');
-        }
+        function fotoCekildi(e) { const r = new FileReader(); r.onload = (f) => renkliPdfOlustur(f.target.result); r.readAsDataURL(e.target.files[0]); }
+        function fixTR(t) { return t.replace(/ğ/g,'g').replace(/Ğ/g,'G').replace(/ü/g,'u').replace(/Ü/g,'U').replace(/ş/g,'s').replace(/Ş/g,'S').replace(/ı/g,'i').replace(/İ/g,'I').replace(/ö/g,'o').replace(/Ö/g,'O').replace(/ç/g,'c').replace(/Ç/g,'C'); }
 
         function renkliPdfOlustur(foto) {
             const doc = new jsPDF();
             const bugun = new Date().toLocaleDateString('tr-TR');
-            
-            // BAŞLIK - YENİ İSİM
-            doc.setTextColor(9, 93, 64);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(22);
-            doc.text(fixTR("ZAYI VE SKT RAPORU"), 105, 20, null, null, 'center');
-            
-            doc.setFontSize(11);
-            doc.setTextColor(0, 0, 0);
-            doc.text(fixTR("Magaza: Soganlik 2 | Tarih: ") + bugun, 105, 28, null, null, 'center');
-            doc.line(10, 32, 200, 32);
-
-            doc.setFillColor(9, 93, 64); doc.rect(10, 35, 95, 8, 'F');
-            doc.setFillColor(245, 124, 0); doc.rect(105, 35, 95, 8, 'F');
-            doc.setTextColor(255, 255, 255); doc.setFontSize(10);
-            doc.text(fixTR("Urun Bilgisi"), 15, 40);
-            doc.text(fixTR("Neden / Tarih / Adet"), 110, 40);
-
-            let y = 50;
-            doc.setTextColor(0, 0, 0);
+            doc.setTextColor(9, 93, 64); doc.setFont("helvetica", "bold"); doc.setFontSize(22); doc.text(fixTR("ZAYI VE SKT RAPORU"), 105, 20, null, null, 'center');
+            doc.setFontSize(11); doc.setTextColor(0, 0, 0); doc.text(fixTR("Magaza: Soganlik 2 | Tarih: ") + bugun, 105, 28, null, null, 'center');
+            doc.line(10, 32, 200, 32); doc.setFillColor(9, 93, 64); doc.rect(10, 35, 95, 8, 'F'); doc.setFillColor(245, 124, 0); doc.rect(105, 35, 95, 8, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(10); doc.text(fixTR("Urun Bilgisi"), 15, 40); doc.text(fixTR("Neden / Tarih / Adet"), 110, 40);
+            let y = 50; doc.setTextColor(0, 0, 0);
             urunler.forEach((u, i) => {
-                doc.setFontSize(10);
-                doc.text(fixTR(u.isim), 15, y);
-                doc.setFontSize(8);
-                doc.text("Barkod: " + u.barkod, 15, y + 5);
-                
-                doc.setFontSize(10);
-                doc.setTextColor(245, 124, 0); 
-                doc.text(fixTR(u.neden) + " | " + u.gun + "." + u.ay + "." + u.yil + " | Adet: " + u.adet, 110, y);
-                
-                doc.setTextColor(0, 0, 0);
-                doc.line(10, y + 8, 200, y + 8);
-                y += 15;
-                if (y > 275) { doc.addPage(); y = 20; }
+                doc.setFontSize(10); doc.text(fixTR(u.isim), 15, y); doc.setFontSize(8); doc.text("Barkod: " + u.barkod, 15, y + 5);
+                doc.setFontSize(10); doc.setTextColor(245, 124, 0); doc.text(fixTR(u.neden) + " | " + u.gun + "." + u.ay + "." + u.yil + " | Adet: " + u.adet, 110, y);
+                doc.setTextColor(0, 0, 0); doc.line(10, y + 8, 200, y + 8); y += 15; if (y > 275) { doc.addPage(); y = 20; }
             });
-
-            // FOTOĞRAF SAYFASI - YAZISIZ VE TEMİZ
-            doc.addPage();
-            doc.addImage(foto, 'JPEG', 10, 10, 190, 150); // Sadece resim, kenarlardan 10mm boşlukla
-            
-            doc.save(`Soganlik2_Rapor_${bugun}.pdf`);
-            location.reload();
+            doc.addPage(); doc.addImage(foto, 'JPEG', 10, 10, 190, 150); doc.save(`Soganlik2_Rapor_${bugun}.pdf`); location.reload();
         }
     </script>
 </body>

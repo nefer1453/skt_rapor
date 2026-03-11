@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soğanlık 2 - Jet Analiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f8f9fa; padding: 10px; margin: 0; color: #333; }
+        h1 { color: #095D40; margin-bottom: 5px; } 
+        .bg-yakut { background-color: #095D40 !important; color: white !important; }
+        .bg-turuncu { background-color: #F57C00 !important; color: white !important; }
+        .bg-kirmizi { background-color: #D32F2F !important; color: white !important; }
+        .bg-gri { background-color: #6c757d !important; color: white !important; }
+        .btn-ana { width: 100%; max-width: 400px; padding: 15px; font-size: 20px; border: none; border-radius: 10px; margin: 10px 0; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 10px; max-width: 400px; margin: 15px auto; }
+        .grid-btn { background: #e0e0e0; color: #333; padding: 15px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+        .ekran { display: none; }
+        #ekran-baslangic { display: block; }
+        #kamera-kapsayici { width: 100%; max-width: 400px; height: 300px; background: #000; margin: 0 auto; border-radius: 10px; overflow: hidden; display: none; border: 3px solid #095D40; }
+        #kamera-kapsayici video { width: 100%; height: 100%; object-fit: cover; }
+        .sepet-kutu { background: white; border-left: 5px solid #095D40; padding: 10px; margin: 10px auto; max-width: 400px; text-align: left; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
+        input[type="text"] { width: 90%; max-width: 380px; padding: 15px; font-size: 18px; border: 2px solid #095D40; border-radius: 8px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="color:#095D40;">SOĞANLIK 2</h1>
+    <p style="color:#666; font-weight:bold;">Zayii ve SKT Takip Sistemi</p>
+
+    <div id="ekran-baslangic" class="ekran">
+        <button class="btn-ana bg-yakut" onclick="kameraAc()">📷 Kamera ile Okut</button>
+        <button class="btn-ana bg-turuncu" onclick="barkodElleGir()">⌨️ Barkod Elle Gir</button>
+        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()" style="font-size:16px; padding:10px;">📚 Ürün Kütüphanesi</button>
+        <div id="sepet-listesi"></div>
+        <input type="file" accept="image/*" capture="environment" id="foto-input" style="display:none;" onchange="fotoCekildi(event)">
+        <button id="btn-rapor" class="btn-ana bg-kirmizi" style="display:none;" onclick="document.getElementById('foto-input').click()">📑 Raporu Hazırla (Fotoğraflı)</button>
+    </div>
+
+    <div id="ekran-barkod-elle" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkod Numarasını Yazın</h3>
+        <input type="text" id="barkod-manuel-input" placeholder="Barkodu buraya yazın">
+        <button class="btn-ana bg-yakut" onclick="barkodOnayla()">Devam Et</button>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
+    <div id="ekran-kutuphane" class="ekran">
+        <h2 style="color:#095D40;">Ürün Arşivi</h2>
+        <div id="kutuphane-liste-alanı"></div>
+        <button class="btn-ana bg-gri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
+    </div>
+
+    <div id="ekran-kamera" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkodu Tarayın</h3>
+        <div id="kamera-kapsayici"></div>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
+    <div id="ekran-isim-giris" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Yeni Ürün Kaydı</h3>
+        <p>Barkod: <span id="yeni-barkod-no" style="font-weight:bold;"></span></p>
+        <input type="text" id="urun-isim-input" placeholder="Ürün Adını Girin">
+        <button class="btn-ana bg-yakut" onclick="isimKaydetVeDevamEt()">💾 Kaydet</button>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
+    <div id="ekran-neden-ana" class="ekran">
+        <h3 id="neden-baslik" style="color: #095D40;">KALDIRILMA NEDENİ</h3>
+        <button class="btn-ana bg-yakut" onclick="nedenSec('SKT')">📅 SKT GEÇMİŞ</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('FABRİKA')">🏭 FABRİKA KAYNAKLI</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('RAF')">🛒 RAF KAYNAKLI</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('MÜŞTERİ')">👥 MÜŞTERİ İADESİ</button>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
+    <div id="ekran-secim" class="ekran">
+        <h2 id="secim-baslik" style="color: #095D40;">SEÇİN</h2>
+        <div id="dinamik-izgara" class="grid-container"></div>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
+    <script>
+        let urunler = [];
+        let aktifUrun = {};
+        let urunHafizasi = JSON.parse(localStorage.getItem('sktUrunHafizasi')) || {};
+        const { jsPDF } = window.jspdf;
+
+        function ekranGoster(id) {
+            document.querySelectorAll('.ekran').forEach(e => e.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+        }
+
+        function iptalEt() {
+            if(window.Quagga) Quagga.stop();
+            document.getElementById('kamera-kapsayici').style.display = 'none';
+            aktifUrun = {};
+            ekranGoster('ekran-baslangic');
+        }
+
+        function kameraAc() {
+            ekranGoster('ekran-kamera');
+            document.getElementById('kamera-kapsayici').style.display = 'block';
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#kamera-kapsayici'), constraints: { facingMode: "environment" } },
+                decoder: { readers: ["ean_reader", "ean_8_reader", "upc_reader"] }
+            }, (err) => { if (!err) Quagga.start(); });
+            Quagga.onDetected((data) => {
+                Quagga.stop();
+                document.getElementById('kamera-kapsayici').style.display = 'none';
+                islemeBaslat(data.codeResult.code);
+            });
+        }
+
+        function barkodElleGir() {
+            ekranGoster('ekran-barkod-elle');
+            document.getElementById('barkod-manuel-input').value = '';
+            document.getElementById('barkod-manuel-input').focus();
+        }
+
+        function barkodOnayla() {
+            let b = document.getElementById('barkod-manuel-input').value.trim();
+            if(b) islemeBaslat(b);
+        }
+
+        function islemeBaslat(barkodNo) {
+            aktifUrun.barkod = barkodNo;
+            if(urunHafizasi[aktifUrun.barkod]) {
+                aktifUrun.isim = urunHafizasi[aktifUrun.barkod];
+                ekranGoster('ekran-neden-ana');
+                document.getElementById('neden-baslik').innerHTML = `<span style="font-size:16px; color:#F57C00;">${aktifUrun.isim}</span><br>KALDIRILMA NEDENİ`;
+            } else {
+                ekranGoster('ekran-isim-giris');
+                document.getElementById('yeni-barkod-no').innerText = aktifUrun.barkod;
+                document.getElementById('urun-isim-input').value = ''; 
+                document.getElementById('urun-isim-input').focus();
+            }
+        }
+
+        function isimKaydetVeDevamEt() {
+            let isim = document.getElementById('urun-isim-input').value.trim();
+            if(!isim) return;
+            aktifUrun.isim = isim;
+            urunHafizasi[aktifUrun.barkod] = isim;
+            localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi));
+            ekranGoster('ekran-neden-ana');
+        }
+
+        function altNedenGoster(tur) {
+            ekranGoster('ekran-secim');
+            document.getElementById('secim-baslik').innerText = tur + " NEDENİ SEÇİN";
+            let html = '';
+            let liste = [];
+            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabancı Madde', 'Ambalaj Bozuk', 'Ürün Bozuk'];
+            if(tur === 'RAF') liste = ['Düştü Kırıldı', 'Deforme Oldu'];
+            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku/Tat vb.'];
+            
+            liste.forEach(n => {
+                html += `<button class="btn-ana bg-turuncu" style="font-size:16px;" onclick="nedenSec('${n}')">${n}</button>`;
+            });
+            document.getElementById('dinamik-izgara').innerHTML = html;
+        }
+
+        function nedenSec(neden) {
+            aktifUrun.neden = neden;
+            if(neden === 'SKT') {
+                izgaraOlustur('GÜN SEÇİN', 1, 31, 'gun');
+            } else {
+                aktifUrun.gun = "--"; aktifUrun.ay = "--"; aktifUrun.yil = "----";
+                izgaraOlustur('ADET SEÇİN', 1, 30, 'adet');
+            }
+        }
+
+        function izgaraOlustur(baslik, min, max, asama) {
+            ekranGoster('ekran-secim');
+            document.getElementById('secim-baslik').innerHTML = `<span style="font-size:16px; color:#F57C00;">${aktifUrun.isim} - ${aktifUrun.neden}</span><br>${baslik}`;
+            let html = '';
+            for(let i = min; i <= max; i++) {
+                let d = i < 10 ? '0'+i : i;
+                html += `<button class="grid-btn" onclick="degerSec('${asama}', '${d}')">${d}</button>`;
+            }
+            document.getElementById('dinamik-izgara').innerHTML = html;
+        }
+
+        function degerSec(asama, d) {
+            if(asama === 'gun') { aktifUrun.gun = d; izgaraOlustur('AY SEÇİN', 1, 12, 'ay'); }
+            else if(asama === 'ay') { aktifUrun.ay = d; izgaraOlustur('YIL SEÇİN', 2025, 2030, 'yil'); }
+            else if(asama === 'yil') { aktifUrun.yil = d; izgaraOlustur('ADET SEÇİN', 1, 30, 'adet'); }
+            else if(asama === 'adet') { 
+                aktifUrun.adet = d; 
+                urunler.push({...aktifUrun}); 
+                aktifUrun = {}; 
+                sepetiCiz(); 
+                ekranGoster('ekran-baslangic'); 
+            }
+        }
+
+        function sepetiCiz() {
+            let h = urunler.length ? '<h3 style="color:#F57C00;">İşlemdeki Ürünler</h3>' : '';
+            urunler.forEach((u, i) => {
+                h += `<div class="sepet-kutu" onclick="urunDuzenle(${i})"><b>#${i+1} ${u.isim}</b><br><small>Neden: ${u.neden} | SKT: ${u.gun}/${u.ay}/${u.yil} | Adet: ${u.adet}</small></div>`;
+            });
+            document.getElementById('sepet-listesi').innerHTML = h;
+            document.getElementById('btn-rapor').style.display = urunler.length ? 'block' : 'none';
+        }
+
+        function urunDuzenle(index) {
+            aktifUrun = urunler[index];
+            urunler.splice(index, 1);
+            sepetiCiz();
+            ekranGoster('ekran-neden-ana');
+        }
+
+        function kutuphaneGoster() {
+            ekranGoster('ekran-kutuphane');
+            let h = '';
+            Object.keys(urunHafizasi).forEach(b => {
+                h += `<div class="liste-item" onclick="isimDuzenle('${b}')"><div><b>${urunHafizasi[b]}</b><br><small>${b}</small></div><button onclick="event.stopPropagation(); urunSil('${b}')" style="color:red; background:none; border:none; font-size:20px;">✕</button></div>`;
+            });
+            document.getElementById('kutuphane-liste-alanı').innerHTML = h || '<p>Kayıtlı ürün yok.</p>';
+        }
+
+        function isimDuzenle(b) {
+            let n = prompt("Yeni isim:", urunHafizasi[b]);
+            if(n) { urunHafizasi[b] = n; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); kutuphaneGoster(); }
+        }
+
+        function urunSil(b) { if(confirm("Silinsin mi?")) { delete urunHafizasi[b]; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); kutuphaneGoster(); } }
+
+        function fotoCekildi(e) {
+            const r = new FileReader();
+            r.onload = (f) => renkliPdfOlustur(f.target.result);
+            r.readAsDataURL(e.target.files[0]);
+        }
+
+        function tr(text) {
+            return text.replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u').replace(/Ş/g, 'S').replace(/ş/g, 's').replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c');
+        }
+
+        function renkliPdfOlustur(foto) {
+            const doc = new jsPDF();
+            const bugun = new Date().toLocaleDateString('tr-TR');
+            doc.setTextColor(9, 93, 64);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.text(tr("ZAYİ VE ANALİZ RAPORU"), 105, 20, null, null, 'center');
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.text(tr("Mağaza: Soğanlık 2 | Tarih: ") + bugun, 105, 28, null, null, 'center');
+            doc.line(10, 32, 200, 32);
+            doc.setFillColor(9, 93, 64);
+            doc.rect(10, 35, 95, 8, 'F');
+            doc.setFillColor(245, 124, 0); 
+            doc.rect(105, 35, 95, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(10);
+            doc.text(tr("Ürün Bilgisi"), 15, 40);
+            doc.text(tr("Neden / Tarih / Adet"), 110, 40);
+            let y = 50;
+            doc.setTextColor(0, 0, 0);
+            urunler.forEach((u, i) => {
+                doc.setFontSize(10);
+                doc.text(tr(u.isim), 15, y);
+                doc.setFontSize(8);
+                doc.text(`Barkod: ${u.barkod}`, 15, y + 5);
+                doc.setFontSize(10);
+                doc.setTextColor(245, 124, 0); 
+                doc.text(`${tr(u.neden)} | ${u.gun}.${u.ay}.${u.yil} | Adet: ${u.adet}`, 110, y);
+                doc.setTextColor(0, 0, 0);
+                doc.line(10, y + 8, 200, y + 8);
+                y += 15;
+                if (y > 275) { doc.addPage(); y = 20; }
+            });
+            doc.addPage();
+            doc.setFillColor(9, 93, 64);
+            doc.rect(0, 0, 210, 15, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.text(tr("KANIT FOTOĞRAFI - SOĞANLIK 2"), 105, 10, null, null, 'center');
+            doc.addImage(foto, 'JPEG', 15, 25, 180, 135);
+            doc.save(`Soganlik2_Zayi_Raporu_${bugun}.pdf`);
+            location.reload();
+        }
+    </script>
+</body>
+</html>

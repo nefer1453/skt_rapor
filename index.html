@@ -149,6 +149,21 @@
             ekranGoster('ekran-neden-ana');
         }
 
+        function altNedenGoster(tur) {
+            ekranGoster('ekran-secim');
+            document.getElementById('secim-baslik').innerText = tur + " NEDENİ";
+            let html = '';
+            let liste = [];
+            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabancı Madde', 'Ambalaj Bozuk', 'Ürün Bozuk'];
+            if(tur === 'RAF') liste = ['Düştü Kırıldı', 'Deforme Oldu', 'Teşhir Eksikliği', 'Yüklü Dağılım'];
+            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku/Tat vb.'];
+            
+            liste.forEach(n => {
+                html += `<button class="btn-ana bg-turuncu" style="font-size:16px;" onclick="nedenSec('${n}')">${n}</button>`;
+            });
+            document.getElementById('dinamik-izgara').innerHTML = html;
+        }
+
         function nedenSec(neden) {
             aktifUrun.neden = neden;
             if(neden === 'SKT') { izgaraOlustur('GÜN SEÇİN', 1, 31, 'gun'); }
@@ -198,7 +213,6 @@
             ekranGoster('ekran-neden-ana');
         }
 
-        // AKILLI ARŞİV FONKSİYONLARI
         function kutuphaneGoster() {
             ekranGoster('ekran-kutuphane');
             document.getElementById('arama-kutusu').value = '';
@@ -207,7 +221,7 @@
 
         function arşivListele(veriler) {
             let h = '';
-            let barkodlar = Object.keys(veriler).reverse(); // En yeni eklenenler üstte
+            let barkodlar = Object.keys(veriler).reverse();
             barkodlar.forEach(b => {
                 h += `
                 <div class="liste-item" onclick="isimDuzenle('${b}')">
@@ -224,14 +238,10 @@
         function arşivFiltrele() {
             let ara = document.getElementById('arama-kutusu').value.toLowerCase().trim();
             let sonuc = {};
-            
             Object.keys(urunHafizasi).forEach(b => {
                 let isim = urunHafizasi[b].toLowerCase();
-                // Koşul 1: İsmin ilk 3 harfi eşleşiyor mu?
                 let isimEşleşti = isim.startsWith(ara.substring(0, 3)) && ara.length >= 1;
-                // Koşul 2: Barkodun son 4 hanesi eşleşiyor mu?
                 let barkodEşleşti = b.endsWith(ara) && ara.length >= 1;
-                // Genel arama (her ihtimale karşı)
                 if (isim.includes(ara) || b.includes(ara) || isimEşleşti || barkodEşleşti) {
                     sonuc[b] = urunHafizasi[b];
                 }
@@ -241,11 +251,7 @@
 
         function isimDuzenle(b) {
             let n = prompt("Ürün ismini güncelleyin:", urunHafizasi[b]);
-            if(n && n.trim() !== "") { 
-                urunHafizasi[b] = n.trim(); 
-                localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); 
-                arşivFiltrele(); 
-            }
+            if(n && n.trim() !== "") { urunHafizasi[b] = n.trim(); localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); arşivFiltrele(); }
         }
 
         function urunSil(b) { if(confirm("Bu ürünü arşivden silmek istediğine emin misin?")) { delete urunHafizasi[b]; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); arşivFiltrele(); } }

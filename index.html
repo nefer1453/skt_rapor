@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soğanlık 2 - Jet Analiz</title>
+    <title>Soğanlık 2 - Akıllı Teyit</title>
     <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -19,12 +19,12 @@
         .grid-btn { background: #e0e0e0; color: #333; padding: 15px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
         .ekran { display: none; }
         #ekran-baslangic { display: block; }
+        .teyit-paneli { background: #fff8f0; border: 2px solid #F57C00; border-radius: 10px; padding: 10px; margin: 10px auto; max-width: 400px; }
         #kamera-kapsayici { width: 100%; max-width: 400px; height: 300px; background: #000; margin: 0 auto; border-radius: 10px; overflow: hidden; display: none; border: 3px solid #095D40; }
         #kamera-kapsayici video { width: 100%; height: 100%; object-fit: cover; }
         .sepet-kutu { background: white; border-left: 5px solid #095D40; padding: 10px; margin: 10px auto; max-width: 400px; text-align: left; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
         .liste-item { background: white; margin: 8px auto; padding: 15px; max-width: 400px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #095D40; box-shadow: 0 3px 5px rgba(0,0,0,0.1); cursor: pointer; }
         input[type="text"] { width: 90%; max-width: 380px; padding: 15px; font-size: 18px; border: 2px solid #095D40; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
-        #arama-kutusu, #arşiv-sec-ara { border: 2px solid #F57C00; margin-top: 10px; background: #fff8f0; }
     </style>
 </head>
 <body>
@@ -33,31 +33,38 @@
         <button class="btn-ana bg-yakut" onclick="kameraAc()">📷 Kamera ile Okut</button>
         <button class="btn-ana bg-turuncu" onclick="barkodElleGir()">⌨️ Barkod Elle Gir</button>
         <button class="btn-ana bg-mavi" onclick="arşivdenSeçEkranı()">📂 Arşivden Al ve Ekle</button>
-        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()">📚 Ürün Arşivi (Düzenle)</button>
+        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()">📚 Ürün Arşivi</button>
         <div id="sepet-listesi"></div>
         <input type="file" accept="image/*" capture="environment" id="foto-input" style="display:none;" onchange="fotoCekildi(event)">
         <button id="btn-rapor" class="btn-ana bg-kirmizi" style="display:none;" onclick="document.getElementById('foto-input').click()">📑 Raporu Hazırla (Fotoğraflı)</button>
     </div>
 
+    <div id="ekran-neden-ana" class="ekran">
+        <div class="teyit-paneli">
+            <small style="color:#F57C00; font-weight:bold;">OKUNAN BARKOD</small><br>
+            <span id="teyit-barkod" style="font-size:22px; font-weight:bold; letter-spacing:2px;">-</span><br>
+            <span id="teyit-isim" style="color:#095D40; font-weight:bold; font-size:16px;">Yeni Ürün Kaydı</span>
+        </div>
+        <h3 style="color: #095D40; margin-top:5px;">KALDIRILMA NEDENİ</h3>
+        <button class="btn-ana bg-yakut" onclick="nedenSec('SKT')">📅 SKT GEÇMİŞ</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('FABRİKA')">🏭 FABRİKA KAYNAKLI</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('RAF')">🛒 RAF KAYNAKLI</button>
+        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('MÜŞTERİ')">👥 MÜŞTERİ İADESİ</button>
+        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
+    </div>
+
     <div id="ekran-arsiv-sec" class="ekran">
-        <h2 style="color:#0277BD;">Hızlı Ürün Seç</h2>
-        <input type="text" id="arşiv-sec-ara" placeholder="İlk 3 harf veya Son 4 hane..." oninput="arşivSeçFiltrele()">
-        <div id="arsiv-sec-liste" style="max-height: 60vh; overflow-y: auto;"></div>
+        <h2 style="color:#0277BD;">Hızlı Seçim</h2>
+        <input type="text" id="arşiv-sec-ara" placeholder="Ara..." oninput="arşivSeçFiltrele()">
+        <div id="arsiv-sec-liste"></div>
         <button class="btn-ana bg-gri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
     </div>
 
     <div id="ekran-kutuphane" class="ekran">
         <h2 style="color:#095D40;">Ürün Arşivi</h2>
-        <input type="text" id="arama-kutusu" placeholder="Arşivde Ara..." oninput="arşivFiltrele()">
-        <div id="kutuphane-liste-alanı" style="max-height: 60vh; overflow-y: auto;"></div>
+        <input type="text" id="arama-kutusu" oninput="arşivFiltrele()">
+        <div id="kutuphane-liste-alanı"></div>
         <button class="btn-ana bg-gri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
-    </div>
-
-    <div id="ekran-barkod-elle" class="ekran">
-        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkod Numarası</h3>
-        <input type="text" id="barkod-manuel-input">
-        <button class="btn-ana bg-yakut" onclick="barkodOnayla()">Devam Et</button>
-        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
     </div>
 
     <div id="ekran-kamera" class="ekran">
@@ -67,18 +74,9 @@
     </div>
 
     <div id="ekran-isim-giris" class="ekran">
-        <h3 class="bg-turuncu" style="padding:10px; color:white;">Yeni Ürün Kaydı</h3>
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Ürün Kaydı</h3>
         <input type="text" id="urun-isim-input" placeholder="Ürün İsmi">
         <button class="btn-ana bg-yakut" onclick="isimKaydetVeDevamEt()">💾 Kaydet</button>
-        <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
-    </div>
-
-    <div id="ekran-neden-ana" class="ekran">
-        <h3 id="neden-baslik">NEDEN SEÇİN</h3>
-        <button class="btn-ana bg-yakut" onclick="nedenSec('SKT')">📅 SKT GEÇMİŞ</button>
-        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('FABRİKA')">🏭 FABRİKA KAYNAKLI</button>
-        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('RAF')">🛒 RAF KAYNAKLI</button>
-        <button class="btn-ana bg-turuncu" onclick="altNedenGoster('MÜŞTERİ')">👥 MÜŞTERİ İADESİ</button>
         <button class="btn-ana bg-kirmizi" onclick="iptalEt()">Vazgeç</button>
     </div>
 
@@ -106,54 +104,34 @@
             Quagga.onDetected((data) => { if(data.codeResult.code.length < 8) return; Quagga.stop(); islemeBaslat(data.codeResult.code); });
         }
 
-        function barkodElleGir() { ekranGoster('ekran-barkod-elle'); document.getElementById('barkod-manuel-input').value = ''; }
+        function barkodElleGir() { ekranGoster('ekran-barkod-elle'); }
         function barkodOnayla() { let b = document.getElementById('barkod-manuel-input').value.trim(); if(b) islemeBaslat(b); }
 
         function islemeBaslat(barkodNo) {
             aktifUrun.barkod = barkodNo;
-            if(urunHafizasi[aktifUrun.barkod]) { aktifUrun.isim = urunHafizasi[aktifUrun.barkod]; ekranGoster('ekran-neden-ana'); }
-            else { ekranGoster('ekran-isim-giris'); document.getElementById('urun-isim-input').value = ''; }
+            document.getElementById('teyit-barkod').innerText = barkodNo;
+            if(urunHafizasi[barkodNo]) {
+                aktifUrun.isim = urunHafizasi[barkodNo];
+                document.getElementById('teyit-isim').innerText = aktifUrun.isim;
+                ekranGoster('ekran-neden-ana');
+            } else {
+                document.getElementById('teyit-isim').innerText = "Yeni Ürün Kaydı";
+                ekranGoster('ekran-isim-giris');
+            }
         }
 
         function isimKaydetVeDevamEt() {
             let isim = document.getElementById('urun-isim-input').value.trim();
             if(!isim) return; aktifUrun.isim = isim; urunHafizasi[aktifUrun.barkod] = isim;
-            localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); ekranGoster('ekran-neden-ana');
+            localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); 
+            document.getElementById('teyit-isim').innerText = isim;
+            ekranGoster('ekran-neden-ana');
         }
 
-        // ARŞİVDEN SEÇİP RAPORA EKLEME SİSTEMİ
-        function arşivdenSeçEkranı() {
-            ekranGoster('ekran-arsiv-sec');
-            document.getElementById('arşiv-sec-ara').value = '';
-            arşivSeçListele(urunHafizasi);
-        }
-
-        function arşivSeçListele(veriler) {
-            let h = '';
-            Object.keys(veriler).reverse().forEach(b => {
-                h += `<div class="liste-item" onclick="islemeBaslat('${b}')"><div><b>${veriler[b]}</b><br><small>${b}</small></div><b style="color:#0277BD;">SEÇ</b></div>`;
-            });
-            document.getElementById('arsiv-sec-liste').innerHTML = h || '<p>Arşiv boş.</p>';
-        }
-
-        function arşivSeçFiltrele() {
-            let ara = document.getElementById('arşiv-sec-ara').value.toLowerCase();
-            let sonuc = {};
-            Object.keys(urunHafizasi).forEach(b => {
-                let isim = urunHafizasi[b].toLowerCase();
-                if(isim.startsWith(ara.substring(0,3)) || b.endsWith(ara) || isim.includes(ara)) { sonuc[b] = urunHafizasi[b]; }
-            });
-            arşivSeçListele(ara === "" ? urunHafizasi : sonuc);
-        }
-
-        function altNedenGoster(tur) {
-            ekranGoster('ekran-secim');
-            let html = '', liste = [];
-            if(tur === 'FABRİKA') liste = ['SKT Silik', 'Yabancı Madde', 'Ambalaj Bozuk', 'Ürün Bozuk'];
-            if(tur === 'RAF') liste = ['Düştü Kırıldı', 'Deforme Oldu', 'Teşhir Eksikliği', 'Yüklü Dağılım'];
-            if(tur === 'MÜŞTERİ') liste = ['Bozuk', 'Koku/Tat vb.'];
-            liste.forEach(n => { html += `<button class="btn-ana bg-turuncu" onclick="nedenSec('${n}')">${n}</button>`; });
-            document.getElementById('dinamik-izgara').innerHTML = html;
+        function arşivdenSeçEkranı() { ekranGoster('ekran-arsiv-sec'); arşivSeçListele(urunHafizasi); }
+        function arşivSeçListele(v) {
+            let h = ''; Object.keys(v).reverse().forEach(b => { h += `<div class="liste-item" onclick="islemeBaslat('${b}')"><div><b>${v[b]}</b><br><small>${b}</small></div><b style="color:#0277BD;">SEÇ</b></div>`; });
+            document.getElementById('arsiv-sec-liste').innerHTML = h;
         }
 
         function nedenSec(neden) {
@@ -176,8 +154,8 @@
         }
 
         function sepetiCiz() {
-            let h = urunler.length ? '<h3 style="color:#F57C00;">İşlemdeki Ürünler</h3>' : '';
-            urunler.forEach((u, i) => { h += `<div class="sepet-kutu" onclick="urunDuzenle(${i})"><b>#${i+1} ${u.isim}</b><br><small>${u.neden} | ${u.gun}.${u.ay}.${u.yil} | Adet: ${u.adet}</small></div>`; });
+            let h = urunler.length ? '<h3 style="color:#F57C00;">Sepet</h3>' : '';
+            urunler.forEach((u, i) => { h += `<div class="sepet-kutu" onclick="urunDuzenle(${i})"><b>#${i+1} ${u.isim}</b><br><small>${u.neden} | Adet: ${u.adet}</small></div>`; });
             document.getElementById('sepet-listesi').innerHTML = h;
             document.getElementById('btn-rapor').style.display = urunler.length ? 'block' : 'none';
         }

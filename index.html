@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soğanlık 2 - SKT Kontrol</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#095D40">
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f8f9fa; padding: 10px; margin: 0; padding-bottom: 80px; color: #333; }
+        h1 { color: #095D40; margin-bottom: 5px; } 
+        .bg-yakut { background-color: #095D40 !important; color: white !important; }
+        .bg-turuncu { background-color: #F57C00 !important; color: white !important; }
+        .bg-mavi { background-color: #0277BD !important; color: white !important; }
+        .bg-kirmizi { background-color: #D32F2F !important; color: white !important; }
+        .bg-gri { background-color: #6c757d !important; color: white !important; }
+        .bg-mor { background-color: #6A1B9A !important; color: white !important; }
+        .btn-ana { width: 100%; max-width: 400px; padding: 15px; font-size: 20px; border: none; border-radius: 10px; margin: 10px 0; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-sabit-geri { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 380px; z-index: 1000; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; max-width: 400px; margin: 15px auto; }
+        .grid-btn { background: #e0e0e0; color: #333; padding: 15px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+        .ekran { display: none; }
+        #ekran-baslangic { display: block; }
+        .teyit-paneli { background: #fff8f0; border: 2px solid #F57C00; border-radius: 10px; padding: 10px; margin: 10px auto; max-width: 400px; }
+        input[type="text"], textarea { width: 90%; max-width: 380px; padding: 15px; font-size: 18px; border: 2px solid #095D40; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; outline: none; }
+        textarea { height: 150px; border-color: #6A1B9A; resize: none; font-family: monospace; font-size: 14px; }
+        .sepet-kutu { background: white; border-left: 5px solid #095D40; padding: 10px; margin: 10px auto; max-width: 400px; text-align: left; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
+        .liste-item { background: white; margin: 8px auto; padding: 15px; max-width: 400px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #095D40; box-shadow: 0 3px 5px rgba(0,0,0,0.1); cursor: pointer; }
+        #kamera-kapsayici { width: 100%; max-width: 400px; height: 300px; background: #000; margin: 0 auto; border-radius: 10px; overflow: hidden; display: none; border: 3px solid #095D40; }
+    </style>
+</head>
+<body>
+    <h1 style="color:#095D40;">SOĞANLIK 2</h1>
+    
+    <div id="ekran-baslangic" class="ekran">
+        <button class="btn-ana bg-mor" onclick="ekranGoster('ekran-gemini-yapistir')">📋 Gemini'den Yapıştır (Otomatik)</button>
+        <hr style="border:0; border-top:1px solid #ccc; margin:15px 0;">
+        <button class="btn-ana bg-yakut" onclick="kameraAc()">📷 Kamera ile Okut</button>
+        <button class="btn-ana bg-turuncu" onclick="barkodElleGir()">⌨️ Barkod Elle Gir</button>
+        <button class="btn-ana bg-mavi" onclick="arşivdenSeçEkranı()">📂 Arşivden Al ve Ekle</button>
+        <button class="btn-ana bg-gri" onclick="kutuphaneGoster()">📚 Ürün Arşivi (Düzenle)</button>
+        
+        <div id="sepet-listesi"></div>
+        <input type="file" accept="image/*" capture="environment" id="foto-input" style="display:none;" onchange="fotoCekildi(event)">
+        <button id="btn-rapor" class="btn-ana bg-kirmizi" style="display:none;" onclick="document.getElementById('foto-input').click()">📑 Raporu Hazırla (Fotoğraflı)</button>
+    </div>
+
+    <div id="ekran-gemini-yapistir" class="ekran">
+        <h3 class="bg-mor" style="padding:10px; color:white;">Gemini Kodunu Yapıştır</h3>
+        <p style="font-size:14px; color:#666;">Gemini'nin size verdiği özel listeyi kopyalayıp aşağıdaki kutuya yapıştırın.</p>
+        <textarea id="gemini-kod-input" placeholder="[ { ... } ] şeklindeki kodu buraya yapıştırın..."></textarea>
+        <button class="btn-ana bg-yakut" onclick="geminiKoduIsle()">✅ Listeyi Sepete Aktar</button>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="ekranGoster('ekran-baslangic')">← İptal Et</button>
+    </div>
+
+    <div id="ekran-neden-ana" class="ekran">
+        <div class="teyit-paneli">
+            <small style="color:#F57C00; font-weight:bold;">KONTROL PANELİ</small><br>
+            <span id="teyit-barkod" style="font-size:18px; font-weight:bold; letter-spacing:2px;">-</span><br>
+            <span id="teyit-isim" style="color:#095D40; font-weight:bold; font-size:18px; cursor:pointer;" onclick="isimDuzenleBaslat()">Ürün Onaylandı</span>
+        </div>
+        <div class="grid-container">
+            <button class="grid-btn bg-yakut" onclick="nedenSec('SKT')" style="color:white;">📅 SKT GEÇMİŞ</button>
+            <button class="grid-btn bg-turuncu" onclick="altNedenGoster('FABRİKA')" style="color:white;">🏭 FABRİKA</button>
+            <button class="grid-btn bg-turuncu" onclick="altNedenGoster('RAF')" style="color:white;">🛒 RAF</button>
+            <button class="grid-btn bg-turuncu" onclick="altNedenGoster('MÜŞTERİ')" style="color:white;">👥 MÜŞTERİ</button>
+        </div>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="iptalEt()">← Geri Dön</button>
+    </div>
+
+    <div id="ekran-isim-giris" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Yeni Ürün Kaydı</h3>
+        <p>Barkod: <span id="yeni-barkod-no" style="font-weight:bold;">-</span></p>
+        <input type="text" id="urun-isim-input" placeholder="Ürün İsmini Girin">
+        <button class="btn-ana bg-yakut" onclick="isimKaydetVeDevamEt()">💾 Kaydet</button>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="iptalEt()">← Geri Dön</button>
+    </div>
+
+    <div id="ekran-secim" class="ekran">
+        <h2 id="secim-baslik" style="color:#095D40;">SEÇİN</h2>
+        <div id="dinamik-izgara" class="grid-container"></div>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="ekranGoster('ekran-neden-ana')">← Geri Dön</button>
+    </div>
+
+    <div id="ekran-arsiv-sec" class="ekran">
+        <h2 style="color:#0277BD;">Hızlı Ürün Seç</h2>
+        <input type="text" id="arşiv-sec-ara" placeholder="Ara (İsim veya Barkod)..." oninput="arşivSeçFiltrele()">
+        <div id="arsiv-sec-liste" style="margin-bottom: 60px;"></div>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
+    </div>
+
+    <div id="ekran-kutuphane" class="ekran">
+        <h2 style="color:#095D40;">Ürün Arşivi</h2>
+        <input type="text" id="arama-kutusu" placeholder="Arşivde ara..." oninput="arşivFiltrele()">
+        <div id="kutuphane-liste-alanı" style="margin-bottom: 60px;"></div>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="ekranGoster('ekran-baslangic')">⬅ Geri Dön</button>
+    </div>
+
+    <div id="ekran-barkod-elle" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkod Numarasını Yazın</h3>
+        <input type="text" id="barkod-manuel-input" placeholder="Barkodu buraya yazın">
+        <button class="btn-ana bg-yakut" onclick="barkodOnayla()">Devam Et</button>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="iptalEt()">← Geri Dön</button>
+    </div>
+
+    <div id="ekran-kamera" class="ekran">
+        <h3 class="bg-turuncu" style="padding:10px; color:white;">Barkodu Tarayın</h3>
+        <div id="kamera-kapsayici"></div>
+        <button class="btn-ana bg-gri btn-sabit-geri" onclick="iptalEt()">← Geri Dön</button>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js'); }); }
+        let urunler = []; let aktifUrun = {};
+        let urunHafizasi = JSON.parse(localStorage.getItem('sktUrunHafizasi')) || {};
+        const { jsPDF } = window.jspdf;
+
+        function ekranGoster(id) { document.querySelectorAll('.ekran').forEach(e => e.style.display = 'none'); document.getElementById(id).style.display = 'block'; window.scrollTo(0,0); }
+        function iptalEt() { if(window.Quagga) Quagga.stop(); ekranGoster('ekran-baslangic'); }
+
+        function geminiKoduIsle() {
+            let kod = document.getElementById('gemini-kod-input').value.trim();
+            if(!kod) return;
+            kod = kod.replace(/```json/gi, '').replace(/```/g, '').trim();
+            try {
+                let yeniListe = JSON.parse(kod);
+                yeniListe.forEach(u => {
+                    let tespitEdilenBarkod = "GEMINI-" + Math.floor(Math.random()*90000 + 10000);
+                    for(let b in urunHafizasi) { if(urunHafizasi[b].toLowerCase() === u.isim.toLowerCase()) { tespitEdilenBarkod = b; break; } }
+                    if(!urunHafizasi[tespitEdilenBarkod]) { urunHafizasi[tespitEdilenBarkod] = u.isim.toUpperCase(); }
+                    urunler.push({ barkod: tespitEdilenBarkod, isim: u.isim.toUpperCase(), neden: u.neden || "SKT", adet: u.adet || 1, gun: u.gun || "--", ay: u.ay || "--", yil: u.yil || "----" });
+                });
+                localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi));
+                document.getElementById('gemini-kod-input').value = "";
+                sepetiCiz(); ekranGoster('ekran-baslangic'); alert(yeniListe.length + " adet ürün listeye hatasız eklendi!");
+            } catch (e) { alert("Hatalı kod! Lütfen Gemini'nin size verdiği kod bloğunu eksiksiz kopyaladığınızdan emin olun."); }
+        }
+
+        function islemeBaslat(b) { aktifUrun = { barkod: b }; document.getElementById('teyit-barkod').innerText = b; if(urunHafizasi[b]) { aktifUrun.isim = urunHafizasi[b]; document.getElementById('teyit-isim').innerText = aktifUrun.isim; ekranGoster('ekran-neden-ana'); } else { document.getElementById('yeni-barkod-no').innerText = b; ekranGoster('ekran-isim-giris'); document.getElementById('urun-isim-input').value = ""; document.getElementById('urun-isim-input').focus(); } }
+        function isimDuzenleBaslat() { let n = prompt("Ürün ismini düzenle:", aktifUrun.isim); if(n) { aktifUrun.isim = n; document.getElementById('teyit-isim').innerText = n; if(aktifUrun.barkod) { urunHafizasi[aktifUrun.barkod] = n; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); } } }
+        function isimKaydetVeDevamEt() { let isim = document.getElementById('urun-isim-input').value.trim(); if(!isim) return; urunHafizasi[aktifUrun.barkod] = isim; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); islemeBaslat(aktifUrun.barkod); }
+        function kameraAc() { ekranGoster('ekran-kamera'); document.getElementById('kamera-kapsayici').style.display = 'block'; Quagga.init({ inputStream: { name: "Live", type: "LiveStream", target: document.querySelector('#kamera-kapsayici') }, decoder: { readers: ["ean_reader"] } }, (err) => { if (!err) Quagga.start(); }); Quagga.onDetected((data) => { Quagga.stop(); islemeBaslat(data.codeResult.code); }); }
+        function barkodElleGir() { ekranGoster('ekran-barkod-elle'); document.getElementById('barkod-manuel-input').value = ''; document.getElementById('barkod-manuel-input').focus(); }
+        function barkodOnayla() { let b = document.getElementById('barkod-manuel-input').value.trim(); if(b) islemeBaslat(b); }
+        function arşivdenSeçEkranı() { ekranGoster('ekran-arsiv-sec'); document.getElementById('arşiv-sec-ara').value = ''; arşivSeçListele(urunHafizasi); document.getElementById('arşiv-sec-ara').focus(); }
+        function arşivSeçListele(v) { let h = ''; Object.keys(v).reverse().forEach(b => { h += `<div class="liste-item" onclick="islemeBaslat('${b}')"><div><b>${v[b]}</b><br><small>${b}</small></div><b>SEÇ</b></div>`; }); document.getElementById('arsiv-sec-liste').innerHTML = h; }
+        function arşivSeçFiltrele() { let ara = document.getElementById('arşiv-sec-ara').value.toLowerCase(); let res = {}; Object.keys(urunHafizasi).forEach(b => { if(urunHafizasi[b].toLowerCase().includes(ara) || b.includes(ara)) res[b] = urunHafizasi[b]; }); arşivSeçListele(res); }
+        function kutuphaneGoster() { ekranGoster('ekran-kutuphane'); arşivFiltrele(); }
+        function arşivFiltrele() { let ara = document.getElementById('arama-kutusu').value.toLowerCase(); let h = ''; Object.keys(urunHafizasi).reverse().forEach(b => { if(urunHafizasi[b].toLowerCase().includes(ara) || b.includes(ara)) h += `<div class="liste-item"><div><b>${urunHafizasi[b]}</b><br><small>${b}</small></div><button onclick="urunSil('${b}')" style="background:none; border:none; color:#D32F2F; font-size:24px; font-weight:bold;">✕</button></div>`; }); document.getElementById('kutuphane-liste-alanı').innerHTML = h; }
+        function urunSil(b) { if(confirm("Sil?")) { delete urunHafizasi[b]; localStorage.setItem('sktUrunHafizasi', JSON.stringify(urunHafizasi)); arşivFiltrele(); } }
+        function altNedenGoster(t) { ekranGoster('ekran-secim'); let l = (t==='FABRİKA')?['SKT Silik','Ambalaj Bozuk','Yabancı Madde','Ürün Bozuk']:(t==='RAF')?['Düştü Kırıldı','Deforme Oldu','Teşhir Eksikliği','Yüklü Dağılım']:['Bozuk','Koku/Tat vb.']; let h = ''; l.forEach(n => { h += `<button class="btn-ana bg-turuncu" style="margin-bottom:10px;" onclick="nedenSec('${n}')">${n}</button>`; }); document.getElementById('dinamik-izgara').innerHTML = h; }
+        function nedenSec(n) { aktifUrun.neden = n; if(n === 'SKT') { izgaraOlustur('GÜN SEÇİN', 1, 31, 'gun'); } else { aktifUrun.gun = "--"; aktifUrun.ay = "--"; aktifUrun.yil = "----"; izgaraOlustur('ADET SEÇİN', 1, 30, 'adet'); } }
+        function izgaraOlustur(bas, min, max, as) { ekranGoster('ekran-secim'); document.getElementById('secim-baslik').innerText = bas; let h = ''; for(let i=min; i<=max; i++){ let d=i<10?'0'+i:i; h+=`<button class="grid-btn" style="padding:15px 0;" onclick="degerSec('${as}','${d}')">${d}</button>`; } document.getElementById('dinamik-izgara').innerHTML = h; }
+        function degerSec(as, d) { if(as==='gun') { aktifUrun.gun=d; izgaraOlustur('AY SEÇİN',1,12,'ay'); } else if(as==='ay') { aktifUrun.ay=d; izgaraOlustur('YIL SEÇİN',2025,2030,'yil'); } else if(as==='yil') { aktifUrun.yil=d; izgaraOlustur('ADET SEÇİN',1,30,'adet'); } else if(as==='adet') { aktifUrun.adet=d; urunler.push({...aktifUrun}); aktifUrun={}; sepetiCiz(); ekranGoster('ekran-baslangic'); } }
+        function sepetiCiz() { let h = ''; urunler.forEach((u,i) => { h += `<div class="sepet-kutu" onclick="urunDuzenle(${i})"><b>#${i+1} ${u.isim}</b><br><small>${u.neden} | ${u.adet} Adet | ${u.gun}.${u.ay}.${u.yil}</small></div>`; }); document.getElementById('sepet-listesi').innerHTML = h; document.getElementById('btn-rapor').style.display = urunler.length ? 'block' : 'none'; }
+        
+        function fotoCekildi(e) { const r = new FileReader(); r.onload=(f)=>renkliPdfOlustur(f.target.result); r.readAsDataURL(e.target.files[0]); }
+        function fixTR(t) { return t.replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c').replace(/Ğ/g,'G').replace(/Ü/g,'U').replace(/Ş/g,'S').replace(/İ/g,'I').replace(/Ö/g,'O').replace(/Ç/g,'C'); }
+        
+        function renkliPdfOlustur(foto) { 
+            const doc = new jsPDF(); 
+            const bugun = new Date().toLocaleDateString('tr-TR'); 
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(9, 93, 64);
+            doc.setFontSize(22);
+            doc.text("SOGANLIK 2", 105, 20, null, null, 'center');
+            doc.setTextColor(245, 124, 0);
+            doc.setFontSize(14);
+            doc.text("ZAYI VE SKT RAPORU", 105, 28, null, null, 'center');
+            doc.setTextColor(100, 100, 100);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(11);
+            doc.text(`Tarih: ${bugun}`, 15, 40);
+            const tableColumn = ["#", "Urun Adi", "Adet", "Neden", "Tarih / Detay"];
+            const tableRows = [];
+            let toplamAdet = 0;
+            urunler.forEach((u, i) => {
+                toplamAdet += parseInt(u.adet) || 1;
+                const urunData = [ i + 1, fixTR(u.isim), u.adet, fixTR(u.neden), u.neden === 'SKT' ? `${u.gun}.${u.ay}.${u.yil}` : "-" ];
+                tableRows.push(urunData);
+            });
+            doc.autoTable({
+                startY: 45, head: [tableColumn], body: tableRows, theme: 'striped',
+                headStyles: { fillColor: [9, 93, 64], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [240, 248, 245] },
+                styles: { font: 'helvetica', fontSize: 10, cellPadding: 4 }
+            });
+            let finalY = doc.lastAutoTable.finalY;
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(50, 50, 50);
+            doc.text(`Toplam Islem Goren Cesit: ${urunler.length}  |  Toplam Urun Adeti: ${toplamAdet}`, 15, finalY + 12);
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+            doc.text("Hazirlayan", 45, finalY + 30, null, null, "center");
+            doc.text("Sarkuteri Sorumlusu", 45, finalY + 35, null, null, "center");
+            doc.text("Onaylayan", 165, finalY + 30, null, null, "center");
+            doc.text("Magaza Muduru", 165, finalY + 35, null, null, "center");
+            if (foto) {
+                doc.addPage();
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(9, 93, 64);
+                doc.setFontSize(16);
+                doc.text("EKLER (FOTOGRAFLI KANIT)", 105, 20, null, null, 'center');
+                doc.addImage(foto, 'JPEG', 15, 30, 180, 140);
+            }
+            doc.save(`Soganlik2_Rapor.pdf`); 
+            setTimeout(() => {
+                urunler = [];
+                sepetiCiz();
+                ekranGoster('ekran-baslangic');
+                alert("Rapor basariyla indirildi! Liste yarina hazirlik icin temizlendi.");
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

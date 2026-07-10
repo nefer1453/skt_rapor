@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'product_model.dart';
 import 'product_card.dart';
+import 'barcode_reader_sheet.dart';
+import 'database_helper.dart';
+import 'report_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -10,17 +13,33 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // Geçici sahte veri listesi (Arayüzü görebilmek için)
-  final List<ProductModel> _scannedProducts = [
-    ProductModel(id: "1", name: "Eski Kaşar Peyniri", barcode: "8690001112223", count: 12, sktDate: DateTime.now().add(const Duration(days: 5))),
-    ProductModel(id: "2", name: "Macar Salam", barcode: "8694445556667", count: 8, sktDate: DateTime.now().add(const Duration(days: 20))),
-    ProductModel(id: "3", name: "Zeytin Ezmesi", barcode: "8697778889991", count: 25, sktDate: DateTime.now().add(const Duration(days: 45))),
-  ];
+  List<ProductModel> _scannedProducts = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshProducts();
+  }
+
+  Future<void> _refreshProducts() async {
+    setState(() => _isLoading = true);
+    final products = await DatabaseHelper.instance.getAllProducts();
+    setState(() {
+      _scannedProducts = products;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _deleteProduct(String id) async {
+    await DatabaseHelper.instance.deleteProduct(id);
+    _refreshProducts();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212), // Parlama yapmayan ana arka plan
+      backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
         title: const Text("SKT KONTROL", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: const Color(0xFF1E1E1E),
@@ -29,41 +48,71 @@ class _MainScreenState extends State<MainScreen> {
           IconButton(
             icon: const Icon(Icons.analytics_outlined, color: Colors.white),
             onPressed: () {
-              // Raporlama ekranına geçiş buraya bağlanacak
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ReportScreen()),
+              );
             },
           ),
         ],
       ),
-      body: _scannedProducts.isEmpty
-          ? const Center(
-              child: Text(
-                "Henüz ürün okutulmadı.\nBaşlamak için aşağıdaki butona basın.",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.only(top: 8, bottom: 100), // Butonun altını kapatmaması için padding
-              itemCount: _scannedProducts.length,
-              itemBuilder: (context, index) {
-                return ProductCard(product: _scannedProducts[index]);
-              },
-            ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A73E8)))
+          : _scannedProducts.isEmpty
+              ? const Center(
+                  child: Text(
+                    "Henüz ürün okutulmadı.\nBaşlamak için aşağıdaki butona basın.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.only(top: 8, bottom: 100),
+                  itemCount: _scannedProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = _scannedProducts[index];
+                    return Dismissible(
+                      key: Key(product.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        color: Colors.red,
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (direction) {
+                        _deleteProduct(product.id);
+                      },
+                      child: ProductCard(product: product),
+                    );
+                  },
+                ),
       
-      // Tek elle operasyon için ekranın alt ortasına yerleştirilmiş devasa buton
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: SizedBox(
         width: 85,
         height: 85,
         child: FloatingActionButton(
           onPressed: () {
-            // Kamera ve Klavyeyi aynı anda tetikleyecek fonksiyon buraya gelecek
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) {
+                return BarcodeReaderSheet(
+                  onProductAdded: (newProduct) async {
+                    await DatabaseHelper.instance.insertProduct(newProduct);
+                    _refreshProducts();
+                  },
+                );
+              },
+            );
           },
-          backgroundColor: const Color(0xFF1A73E8), // Elektrik Mavisi aksiyon rengi
+          backgroundColor: const Color(0xFF1A73E8),
           shape: const CircleBorder(),
           elevation: 6,
           child: const Icon(
-            Icons.center_focus_strong, // Hem odaklanmayı hem kamerayı çağrıştıran şık ikon
+            Icons.center_focus_strong,
             size: 38,
             color: Colors.white,
           ),

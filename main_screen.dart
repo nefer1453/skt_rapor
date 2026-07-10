@@ -44,18 +44,19 @@ class _MainScreenState extends State<MainScreen> {
         title: const Text("SKT KONTROL", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: const Color(0xFF1E1E1E),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ReportScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+        // main_screen.dart içindeki AppBar actions kısmı güncellendi:
+  actions: [
+  IconButton(
+    icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ReportScreen()),
+      );
+    },
+  ),
+],
+        
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Color(0xFF1A73E8)))
           : _scannedProducts.isEmpty
